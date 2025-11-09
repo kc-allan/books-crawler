@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7
+    container_name: books_crawler_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=books_crawler
+    networks:
+      - crawler_network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: books_crawler_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - crawler_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    container_name: books_crawler_api
+    command: uvicorn src.api.app:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./html_snapshots:/app/html_snapshots
+      - ./reports:/app/reports
+    environment:
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+      - MONGODB_DB=books_crawler
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - API_RELOAD=True
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+
+  celery_worker:
+    build: .
+    container_name: books_crawler_celery_worker
+    command: celery -A src.scheduler.celery_app worker --loglevel=info
+    volumes:
+      - ./logs:/app/logs
+      - ./html_snapshots:/app/html_snapshots
+      - ./reports:/app/reports
+    environment:
+      - MONGODB_HOST=mongodb
+      - MONGODB_PORT=27017
+      - MONGODB_DB=books_crawler
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+
+  celery_beat:
+    build: .
+    container_name: books_crawler_celery_beat
+    command: celery -A src.scheduler.celery_app beat --loglevel=info
+    volumes:
+      - ./logs:/app/logs
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - SCHEDULER_CRAWL_HOUR=2
+      - SCHEDULER_CRAWL_MINUTE=0
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - crawler_network
+
+volumes:
+  mongo_data:
+    driver: local
+
+networks:
+  crawler_network:
+    driver: bridge
