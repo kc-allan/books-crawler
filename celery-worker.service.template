@@ -1,0 +1,48 @@
+[Unit]
+Description=Celery Worker Service for Books Crawler
+After=network.target mongodb.service redis.service
+
+[Service]
+Type=forking
+User=${SERVICE_USER}
+Group=${SERVICE_GROUP}
+WorkingDirectory=${APP_DIR}
+Environment="PATH=${APP_DIR}/venv/bin"
+Environment="PYTHONPATH=${APP_DIR}"
+
+# Load environment variables from .env file
+EnvironmentFile=${APP_DIR}/.env
+
+# Celery worker command
+ExecStart=${APP_DIR}/venv/bin/celery -A src.scheduler.celery_app worker \
+    --loglevel=info \
+    --logfile=${LOG_DIR}/worker.log \
+    --pidfile=${PID_DIR}/worker.pid \
+    --concurrency=${WORKER_CONCURRENCY} \
+    --max-tasks-per-child=50
+
+# Process management
+PIDFile=${PID_DIR}/worker.pid
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Restart configuration
+Restart=always
+RestartSec=10s
+
+# Resource limits
+LimitNOFILE=65536
+MemoryLimit=${WORKER_MEMORY_LIMIT}
+CPUQuota=${WORKER_CPU_QUOTA}
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=celery-worker
+
+[Install]
+WantedBy=multi-user.target

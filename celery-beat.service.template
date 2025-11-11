@@ -1,0 +1,46 @@
+[Unit]
+Description=Celery Beat Service for Books Crawler (Scheduler)
+After=network.target mongodb.service redis.service celery-worker.service
+Requires=celery-worker.service
+
+[Service]
+Type=simple
+User=${SERVICE_USER}
+Group=${SERVICE_GROUP}
+WorkingDirectory=${APP_DIR}
+Environment="PATH=${APP_DIR}/venv/bin"
+Environment="PYTHONPATH=${APP_DIR}"
+
+# Load environment variables from .env file
+EnvironmentFile=${APP_DIR}/.env
+
+# Celery beat command
+ExecStart=${APP_DIR}/venv/bin/celery -A src.scheduler.celery_app beat \
+    --loglevel=info \
+    --logfile=${LOG_DIR}/beat.log \
+    --pidfile=${PID_DIR}/beat.pid \
+    --schedule=${PID_DIR}/celerybeat-schedule
+
+# Process management
+PIDFile=${PID_DIR}/beat.pid
+ExecStop=/bin/kill -TERM $MAINPID
+
+# Restart configuration
+Restart=always
+RestartSec=10s
+
+# Resource limits
+LimitNOFILE=4096
+MemoryLimit=${BEAT_MEMORY_LIMIT}
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=celery-beat
+
+[Install]
+WantedBy=multi-user.target

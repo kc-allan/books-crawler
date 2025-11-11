@@ -55,6 +55,10 @@ reports/
 celerybeat-schedule
 celerybeat.pid
 
+# Systemd service files
+*.service
+!*.service.template
+
 # OS
 .DS_Store
 Thumbs.db
