@@ -393,10 +393,6 @@ async def get_book_by_id(
         book = books_collection.find_one({'_id': ObjectId(book_id)})
 
         if not book:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Book not found"
-        )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Book not found"
