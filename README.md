@@ -13,6 +13,13 @@ A comprehensive, scalable web crawling solution for monitoring book information 
 - **Data Persistence**: MongoDB for structured data, filesystem for HTML snapshots
 - **Comprehensive Testing**: Unit and integration tests with pytest
 
+### MongoDB Documents snapshot
+
+![MongoDB Collections](assets/documents_snippet.png)
+
+### Sample crawl output
+![Crawled Output](assets/sample_run.png)
+
 ## Project Structure
 
 ```
@@ -224,7 +231,7 @@ The scheduler will:
 - Detect new books and price changes
 - Store change logs in MongoDB
 
-*Note*: This is best set up as background services in production. Recommended configurations are provided in the [celery-worker.service](celery-worker.service) and [celery-beat.service](celery-beat.service) templates.
+*Note*: This is best set up as background services in production. Recommended configurations are provided in the [celery-worker.service](celery-worker.service.template) and [celery-beat.service](celery-beat.service.template) templates.
 
 ### Manual Task Execution
 
